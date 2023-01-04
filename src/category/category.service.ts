@@ -1,6 +1,6 @@
-import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, isValidObjectId } from 'mongoose';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { Category } from './entities/category.entity';
@@ -25,27 +25,64 @@ export class CategoryService {
     }
   }
 
-  findAll() {
-    return `This action returns all category`;
+  async findAll() {
+    try {
+      const categories = await this.categoryModel.find();
+      return categories;
+    } catch (error) {
+      this.handleExceptions(error)
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} category`;
+  async findOne(term: string) {
+      let category: Category;
+
+      if(isValidObjectId(term)) {
+        category = await this.categoryModel.findById(term);
+      }
+
+      if(!category) {
+        category = await this.categoryModel.findOne({ name: term.toLowerCase().trim() });
+      }
+
+      if(!category) {
+        throw new NotFoundException(`Category with name or id ${term} not found`)
+      }
+
+      return category;   
   }
 
-  update(id: number, updateCategoryDto: UpdateCategoryDto) {
-    return `This action updates a #${id} category`;
+  async update(term: string, updateCategoryDto: UpdateCategoryDto) {
+    const category: Category = await this.findOne(term);
+
+    if(updateCategoryDto.name) {
+      updateCategoryDto.name = updateCategoryDto.name.toLowerCase();
+    }
+
+    try {
+
+      await category.updateOne( updateCategoryDto, { new: true } )
+      
+    } catch (error) {
+      console.log(error);
+      this.handleExceptions(error)
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} category`;
+  async remove(id: string) {
+    const { deletedCount } = await this.categoryModel.deleteOne({ _id: id });
+
+    if(deletedCount === 0) {
+      throw new BadRequestException(`Category with id "${ id }" not found`);
+    }
+    return;
   }
 
   private handleExceptions(error: any) {
     if(error.code === 11000) {
-      throw new BadRequestException(`Pokemon exists in db ${ JSON.stringify( error.keyValue ) }`)
+      throw new BadRequestException(`Category exists in db ${ JSON.stringify( error.keyValue ) }`)
     }
     console.log(error);
-    throw new InternalServerErrorException(`Can't update Pokemon - Check server logs`);
+    throw new InternalServerErrorException(`Check server logs`);
   }
 }

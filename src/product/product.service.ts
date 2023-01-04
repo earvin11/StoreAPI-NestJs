@@ -60,7 +60,6 @@ export class ProductService {
   }
 
   async update(term: string, updateProductDto: UpdateProductDto) {
-    console.log(updateProductDto)
     const product = await this.findOne( term );
 
     if(updateProductDto.name) {
@@ -80,16 +79,16 @@ export class ProductService {
     const { deletedCount } = await this.productModel.deleteOne({ _id: id });
 
     if(deletedCount === 0) {
-      throw new BadRequestException(`Pokemon with id "${ id }" not found`);
+      throw new BadRequestException(`Product with id "${ id }" not found`);
     }
     return;
   }
 
   private handleExceptions(error: any) {
     if(error.code === 11000) {
-      throw new BadRequestException(`Pokemon exists in db ${ JSON.stringify( error.keyValue ) }`)
+      throw new BadRequestException(`Product exists in db ${ JSON.stringify( error.keyValue ) }`)
     }
     console.log(error);
-    throw new InternalServerErrorException(`Can't update Pokemon - Check server logs`);
+    throw new InternalServerErrorException(`Check server logs`);
   }
 }
